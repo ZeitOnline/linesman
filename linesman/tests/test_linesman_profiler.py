@@ -2,7 +2,6 @@ import unittest
 from cProfile import Profile
 
 from mock import patch
-from nose.tools import assert_equals
 
 import linesman
 
@@ -27,9 +26,9 @@ class TestProfilingSession(unittest.TestCase):
         """ Test ProfilingSession initialization with default args """
         session = linesman.ProfilingSession(self.stats)
         mock_create_graph.assert_called_with(self.stats)
-        assert_equals(session.path, None)
-        assert_equals(session.timestamp, None)
-        assert_equals(str(session._uuid), session.uuid)
+        self.assertEqual(session.path, None)
+        self.assertEqual(session.timestamp, None)
+        self.assertEqual(str(session._uuid), session.uuid)
 
     @patch("linesman.create_graph")
     def test_init_environ(self, mock_create_graph):
@@ -37,9 +36,9 @@ class TestProfilingSession(unittest.TestCase):
         environ = {'PATH_INFO': '/some/path'}
         session = linesman.ProfilingSession(self.stats, environ)
         mock_create_graph.assert_called_with(self.stats)
-        assert_equals(session.path, environ.get('PATH_INFO'))
-        assert_equals(session.timestamp, None)
-        assert_equals(str(session._uuid), session.uuid)
+        self.assertEqual(session.path, environ.get('PATH_INFO'))
+        self.assertEqual(session.timestamp, None)
+        self.assertEqual(str(session._uuid), session.uuid)
 
     @patch("linesman.create_graph")
     def test_init_environ_timestamp(self, mock_create_graph):
@@ -48,6 +47,6 @@ class TestProfilingSession(unittest.TestCase):
         timestamp = "Some generic timestamp"
         session = linesman.ProfilingSession(self.stats, environ, timestamp)
         mock_create_graph.assert_called_with(self.stats)
-        assert_equals(session.path, environ.get('PATH_INFO'))
-        assert_equals(session.timestamp, timestamp)
-        assert_equals(str(session._uuid), session.uuid)
+        self.assertEqual(session.path, environ.get('PATH_INFO'))
+        self.assertEqual(session.timestamp, timestamp)
+        self.assertEqual(str(session._uuid), session.uuid)

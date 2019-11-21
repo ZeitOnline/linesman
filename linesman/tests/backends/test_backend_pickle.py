@@ -1,5 +1,5 @@
 import os
-from cPickle import HIGHEST_PROTOCOL
+import sys
 from nose.tools import raises
 from mock import MagicMock, Mock, patch
 from tempfile import TemporaryFile
@@ -9,6 +9,17 @@ from linesman.tests import get_temporary_filename
 from linesman.tests.backends import TestBackend
 
 MOCK_SESSION_UUID = "abcd1234"
+
+if sys.version_info[0] < 3:
+    from cPickle import HIGHEST_PROTOCOL
+    patch_open = '__builtin__.open'
+    patch_pickle_dump = 'cPickle.dump'
+    patch_pickle_load = 'cPickle.load'
+else:
+    from pickle import HIGHEST_PROTOCOL
+    patch_open = 'builtins.open'
+    patch_pickle_dump = 'pickle.dump'
+    patch_pickle_load = 'pickle.load'
 
 
 class TestBackendPickle(TestBackend):
@@ -20,14 +31,14 @@ class TestBackendPickle(TestBackend):
     def tearDown(self):
         os.remove(self.filename)
 
-    @patch("cPickle.dump")
+    @patch(patch_pickle_dump)
     def test_flush(self, mock_dump):
-        """ Test that the file is opened by cPickle. """
+        """ Test that the file is opened by pickle. """
         test_fd = TemporaryFile()
-        with patch("__builtin__.open", Mock(side_effect=IOError())):
+        with patch(patch_open, Mock(side_effect=IOError())):
             self.backend.setup()
 
-        with patch("__builtin__.open") as mock_open:
+        with patch(patch_open) as mock_open:
             mock_open.return_value = test_fd
             self.backend._flush()
             mock_open.assert_called_once_with(
@@ -38,16 +49,16 @@ class TestBackendPickle(TestBackend):
             test_fd,
             HIGHEST_PROTOCOL)
 
-    @patch("__builtin__.open")
-    @patch("cPickle.load")
+    @patch(patch_open)
+    @patch(patch_pickle_load)
     def test_setup(self, mock_load, mock_open):
         """ Test that setup will load pickled data. """
-        mock_open.return_value = MagicMock(spec=file)
+        mock_open(read_data="data")
         self.backend.setup()
-        mock_open.assert_called_once_with(self.filename, "rb")
+        mock_open.assert_called_with(self.filename, 'rb')
         mock_load.assert_called_once()
 
-    @patch("__builtin__.open")
+    @patch(patch_open)
     @patch("linesman.backends.pickle.OrderedDict")
     def test_setup_ioerror(self, mock_ordered_dict, mock_open):
         """ Test that setup will create a new ordered dict if no file exists
@@ -57,13 +68,13 @@ class TestBackendPickle(TestBackend):
         mock_ordered_dict.assert_called_once_with()
 
     @raises(ValueError)
-    @patch("__builtin__.open")
+    @patch(patch_open)
     def test_setup_value_error(self, mock_open):
         """ Test that bad pickled data raises a ValueError. """
         mock_open.side_effect = ValueError("Could not unpickle!")
         self.backend.setup()
 
-    @patch("__builtin__.open", Mock(side_effect=IOError()))
+    @patch(patch_open, Mock(side_effect=IOError()))
     @patch("linesman.backends.pickle.PickleBackend._flush")
     def test_add(self, mock_flush):
         """ Test that add creates a new entry in the session. """
@@ -76,7 +87,7 @@ class TestBackendPickle(TestBackend):
         self.assertTrue(mock_session.uuid in self.backend._session_history)
         mock_flush.assert_called_once()
 
-    @patch("__builtin__.open", Mock(side_effect=IOError()))
+    @patch(patch_open, Mock(side_effect=IOError()))
     @patch("linesman.backends.pickle.PickleBackend._flush")
     def test_delete(self, mock_flush):
         """ Test that deleting an existing UUID returns 0. """
@@ -85,10 +96,10 @@ class TestBackendPickle(TestBackend):
 
         self.backend.setup()
         self.backend.add(mock_session)
-        self.assertEquals(self.backend.delete(mock_session.uuid), 1)
-        mock_flush.assert_called_once()
+        self.assertEqual(self.backend.delete(mock_session.uuid), 1)
+        self.assertEqual(mock_flush.call_count, 2)
 
-    @patch("__builtin__.open", Mock(side_effect=IOError()))
+    @patch(patch_open, Mock(side_effect=IOError()))
     @patch("linesman.backends.pickle.PickleBackend._flush")
     def test_delete_non_existent_uuid(self, mock_flush):
         """ Test that deleting a non-existing UUID returns 0. """
@@ -97,13 +108,14 @@ class TestBackendPickle(TestBackend):
 
         self.backend.setup()
         self.backend.add(mock_session)
-        self.assertEquals(self.backend.delete("basb3144"), 0)
+        self.assertEqual(self.backend.delete("basb3144"), 0)
         mock_flush.assert_called_once()
 
-    @patch("__builtin__.open", Mock(side_effect=IOError()))
+    @patch(patch_open, Mock(side_effect=IOError()))
     @patch("linesman.backends.pickle.PickleBackend._flush")
     def test_delete_many(self, mock_flush):
         """ Test that delete_many does the right thing. """
+
         self.backend.setup()
         mock_sessions = []
         for i in range(10):
@@ -112,12 +124,14 @@ class TestBackendPickle(TestBackend):
             mock_sessions.append(mock_session)
             self.backend.add(mock_session)
 
-        self.assertEquals(self.backend.delete_many(session.uuid for session in mock_sessions[0:5]), 5)
-        self.assertEquals(self.backend.delete_many(['11','12','13','14']), 0)
-        self.assertEquals(len(self.backend._session_history), 5)
-        mock_flush.assert_called_once()
+        self.assertEqual(
+            self.backend.delete_many(
+                session.uuid for session in mock_sessions[0:5]), 5)
+        self.assertEqual(self.backend.delete_many(['11', '12', '13', '14']), 0)
+        self.assertEqual(len(self.backend._session_history), 5)
+        self.assertEqual(mock_flush.call_count, 12)
 
-    @patch("__builtin__.open", Mock(side_effect=IOError()))
+    @patch(patch_open, Mock(side_effect=IOError()))
     @patch("linesman.backends.pickle.PickleBackend._flush")
     def test_delete_all(self, mock_flush):
         """ Test that deleting a non-existing UUID returns 0. """
@@ -130,19 +144,19 @@ class TestBackendPickle(TestBackend):
         self.backend.setup()
         self.backend.add(mock_session1)
         self.backend.add(mock_session2)
-        self.assertEquals(self.backend.delete_all(), 2)
-        self.assertEquals(len(self.backend._session_history), 0)
-        mock_flush.assert_called_once()
+        self.assertEqual(self.backend.delete_all(), 2)
+        self.assertEqual(len(self.backend._session_history), 0)
+        self.assertEqual(mock_flush.call_count, 3)
 
-    @patch("__builtin__.open", Mock(side_effect=IOError()))
+    @patch(patch_open, Mock(side_effect=IOError()))
     @patch("linesman.backends.pickle.PickleBackend._flush")
     def test_delete_all_empty(self, mock_flush):
         """ Test that callign delete all on an empty dict returns 0. """
         self.backend.setup()
-        self.assertEquals(self.backend.delete_all(), 0)
+        self.assertEqual(self.backend.delete_all(), 0)
         mock_flush.assert_called_once()
 
-    @patch("__builtin__.open", Mock(side_effect=IOError()))
+    @patch(patch_open, Mock(side_effect=IOError()))
     @patch("linesman.backends.pickle.PickleBackend._flush", Mock())
     def test_get(self):
         """ Test that retrieving an existing UUID succeeds. """
@@ -151,15 +165,15 @@ class TestBackendPickle(TestBackend):
 
         self.backend.setup()
         self.backend.add(mock_session)
-        self.assertEquals(self.backend.get(MOCK_SESSION_UUID), mock_session)
+        self.assertEqual(self.backend.get(MOCK_SESSION_UUID), mock_session)
 
-    @patch("__builtin__.open", Mock(side_effect=IOError()))
+    @patch(patch_open, Mock(side_effect=IOError()))
     def test_get_non_existent_uuid(self):
         """ Test that retrieving an non-existent UUID returns None. """
         self.backend.setup()
-        self.assertEquals(self.backend.get(MOCK_SESSION_UUID), None)
+        self.assertEqual(self.backend.get(MOCK_SESSION_UUID), None)
 
-    @patch("__builtin__.open", Mock(side_effect=IOError()))
+    @patch(patch_open, Mock(side_effect=IOError()))
     @patch("linesman.backends.pickle.PickleBackend._flush", Mock())
     def test_get_all(self):
         """ Test that getting all results returns a copy. """

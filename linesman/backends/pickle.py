@@ -53,6 +53,8 @@ class PickleBackend(Backend):
         """
         Reads in pickled data from ``filename``.
         """
+
+
         try:
             with open(self.filename, "rb") as pickle_fd:
                 self._session_history = cPickle.load(pickle_fd)

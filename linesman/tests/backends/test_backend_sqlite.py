@@ -50,8 +50,8 @@ class TestBackendSqlite(TestBackend):
         actual_uuid, actual_timestamp, actual_session = c.fetchone()
 
         # Assure the meta columns are equal
-        self.assertEquals(mock_session.uuid, actual_uuid)
-        self.assertEquals(SPECIFIC_DATE_EPOCH, actual_timestamp)
+        self.assertEqual(mock_session.uuid, actual_uuid)
+        self.assertEqual(SPECIFIC_DATE_EPOCH, actual_timestamp)
 
         # Also insure that the session we put in is intact!
         self.assertSessionsEqual(mock_session, actual_session)
@@ -68,7 +68,7 @@ class TestBackendSqlite(TestBackend):
         # Verify that no rows are matched
         c = self.backend.conn.cursor()
         c.execute(query, params)
-        self.assertEquals(c.fetchone(), None)
+        self.assertEqual(c.fetchone(), None)
 
     def test_delete_many(self):
         """ Test that delete_many removes the correct sessions. """
@@ -79,11 +79,11 @@ class TestBackendSqlite(TestBackend):
             sessions.append(mock_session.uuid)
 
         delete_count = self.backend.delete_many(sessions[0:5])
-        self.assertEquals(delete_count, 5)
+        self.assertEqual(delete_count, 5)
 
         c = self.backend.conn.cursor()
         c.execute("SELECT COUNT(*) FROM sessions;")
-        self.assertEquals(c.fetchone(), (5,))
+        self.assertEqual(c.fetchone(), (5,))
 
     def test_delete_all(self):
         """ Test that deleting all session removes them all from the DB """
@@ -101,7 +101,7 @@ class TestBackendSqlite(TestBackend):
         # Verify that no rows are matched
         c = self.backend.conn.cursor()
         c.execute(query)
-        self.assertEquals(c.fetchone(), None)
+        self.assertEqual(c.fetchone(), None)
 
     def test_get(self):
         """ Test that a session can be received using get(). """

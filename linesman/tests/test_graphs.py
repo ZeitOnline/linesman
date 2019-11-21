@@ -1,8 +1,8 @@
 import unittest
+import sys
 from cProfile import Profile
 
 from mock import Mock, patch
-from nose.tools import assert_equals
 
 import linesman
 
@@ -27,7 +27,7 @@ class TestGraphUtils(unittest.TestCase):
         stat = Mock()
         stat.code = "__builtin__"
         key = linesman._generate_key(stat)
-        assert_equals(key, stat.code)
+        self.assertEqual(key, stat.code)
 
     def test_generate_key_module(self):
         """ Test that a key is generated for module functions """
@@ -39,7 +39,7 @@ class TestGraphUtils(unittest.TestCase):
 
         expected_key = "%s.%s" % (self.__module__, stat.code.co_name)
         key = linesman._generate_key(stat)
-        assert_equals(key, expected_key)
+        self.assertEqual(key, expected_key)
 
     @patch("linesman.getmodule", Mock(return_value=None))
     def test_generate_key_unknown(self):
@@ -52,7 +52,7 @@ class TestGraphUtils(unittest.TestCase):
 
         expected_key = "%s.%s" % (stat.code.co_filename, stat.code.co_name)
         key = linesman._generate_key(stat)
-        assert_equals(key, expected_key)
+        self.assertEqual(key, expected_key)
 
     def test_create_graph(self):
         """ Test that a graph gets generated for a test function """
@@ -62,16 +62,26 @@ class TestGraphUtils(unittest.TestCase):
         prof.runctx("test_func()", locals(), globals())
         graph = linesman.create_graph(prof.getstats())
 
-        # We should only ever have three items here
-        assert_equals(len(graph), 3)
+        nodes = [node for node in graph.nodes()]
+        nodes.sort()
 
-        # Assert that the three items we have are as expected
-        assert_equals(graph.nodes(),
-            ['<string>.<module>',
-             'linesman.tests.test_graphs.test_func',
-             "<method 'disable' of '_lsprof.Profiler' objects>"])
+        # Python2 and three differ in the default callstack
+        if sys.version_info[0] < 3:
+            self.assertEqual(len(graph), 3)
+            self.assertEqual(nodes, ["<method 'disable' of '_lsprof.Profiler' objects>", '<string>.<module>', 'linesman.tests.test_graphs.test_func'])
+            # Assert that the three items we have are as expected
+            self.assertEqual(nodes, ["<method 'disable' of '_lsprof.Profiler' objects>", '<string>.<module>', 'linesman.tests.test_graphs.test_func'])
+            edges = [x for x in graph.edges()]
+            self.assertEqual(
+                [('<string>.<module>', 'linesman.tests.test_graphs.test_func')],
+                edges)
+        else:
+            self.assertEqual(len(graph), 4)
+            self.assertEqual(nodes, ["<built-in method builtins.exec>", "<method 'disable' of '_lsprof.Profiler' objects>", '<string>.<module>', 'linesman.tests.test_graphs.test_func'])
+            self.assertEqual(nodes, ["<built-in method builtins.exec>", "<method 'disable' of '_lsprof.Profiler' objects>", '<string>.<module>', 'linesman.tests.test_graphs.test_func'])
+            # Assert that the correct edges are set-up
 
-        # Assert that the correct edges are set-up
-        assert_equals(
-            [('<string>.<module>', 'linesman.tests.test_graphs.test_func')],
-            graph.edges())
+            edges = [x for x in graph.edges()]
+            self.assertEqual(
+                [('<built-in method builtins.exec>', '<string>.<module>'), ('<string>.<module>', 'linesman.tests.test_graphs.test_func')],
+                edges)
