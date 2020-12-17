@@ -7,7 +7,7 @@ except ImportError:
 
 import sys
 
-install_requires = ["mako", "networkx==1.7", "pillow", "pygraphviz", 'Paste', 'WebOb', 'six', 'mock']
+install_requires = ["mako", "networkx==1.7", "pillow", "pygraphviz", 'Paste', 'WebOb', 'six']
 
 # ordereddict is required for versions < 2.7; its included in collections in
 # versions 2.7+ and 3.0+
@@ -16,7 +16,7 @@ if sys.version_info < (2, 7):
 
 setup(
     name='linesman',
-    version='0.3.2',
+    version='0.3.2+py3.1',
     description='WSGI Profiling middleware',
     long_description=open("README.rst", "r").read(),
     author='Andrew McFague',
