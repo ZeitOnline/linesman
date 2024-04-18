@@ -251,7 +251,7 @@ class ProfilingMiddleware(object):
                 log.debug("Creating thumbnail for %s at %s.", session_uuid,
                                                               thumbnail_path)
                 im = Image.open(path, 'r')
-                im.thumbnail((600, 600), Image.ANTIALIAS)
+                im.thumbnail((600, 600), Image.Resampling.LANCZOS)
                 im.save(thumbnail_path)
 
         return StaticURLParser(GRAPH_DIR)
